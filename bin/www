@@ -1,0 +1,81 @@
+#!/usr/bin/env node
+
+const app = require('../app');
+const http = require('http');
+const https = require('https');
+const fs = require('fs');
+const WebSocket = require('ws');
+const { sequelize } = require('../models'); // Adjust the path as necessary
+
+const privateKey = fs.readFileSync('certs/server.key', 'utf8');
+const certificate = fs.readFileSync('certs/server.cert', 'utf8');
+const credentials = { key: privateKey, cert: certificate };
+
+const port = process.env.PORT || 3000;
+const securePort = process.env.SECURE_PORT || 3443;
+
+app.set('port', port);
+app.set('securePort', securePort);
+
+const httpServer = http.createServer(app);
+const httpsServer = https.createServer(credentials, app);
+
+const wss = new WebSocket.Server({ server: httpsServer });
+
+wss.on('connection', (ws) => {
+    console.log('Client connected');
+    
+    ws.on('message', (message) => {
+        console.log(`Received message: ${message}`);
+        ws.send(`Echo: ${message}`);
+    });
+
+    ws.on('close', () => {
+        console.log('Client disconnected');
+    });
+});
+
+// Sync sequelize and then start the server
+sequelize.sync().then(() => {
+    httpServer.listen(port);
+    httpServer.on('error', onError);
+    httpServer.on('listening', onListening.bind(httpServer, 'HTTP')); 
+
+    httpsServer.listen(securePort);
+    httpsServer.on('error', onError);
+    httpsServer.on('listening', onListening.bind(httpsServer, 'HTTPS'));
+
+  }).catch(error => {
+    console.error('Unable to connect to the database:', error);
+  });
+
+
+
+
+
+function onError(error) {
+    if (error.syscall !== 'listen') {
+        throw error;
+    }
+
+    const bind = typeof this.address() === 'string' ? 'Pipe ' + this.address() : 'Port ' + this.address().port;
+
+    switch (error.code) {
+        case 'EACCES':
+            console.error(`${bind} requires elevated privileges`);
+            process.exit(1);
+            break;
+        case 'EADDRINUSE':
+            console.error(`${bind} is already in use`);
+            process.exit(1);
+            break;
+        default:
+            throw error;
+    }
+}
+
+function onListening(serverType) {
+    const addr = this.address();
+    const bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
+    console.log(`${serverType} server listening on ${bind}`);
+}

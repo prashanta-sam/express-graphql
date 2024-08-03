@@ -1,0 +1,21 @@
+1. clone this repo  
+    run ->  "npm i" in terminal
+
+2.  run these below command
+    mkdir certs
+    openssl genrsa -out certs/server.key 2048
+    openssl req -new -key certs/server.key -out certs/server.csr
+    openssl x509 -req -days 365 -in certs/server.csr -signkey certs/server.key -out certs/server.cert
+
+
+3. create db and table in phpmyadmin
+
+CREATE DATABASE graphql;
+
+CREATE TABLE `graphql`.`users` (`id` INT NOT NULL AUTO_INCREMENT , `name` VARCHAR(100) NOT NULL , `email` VARCHAR(100) NOT NULL , `age` INT(2) NOT NULL , PRIMARY KEY (`id`)) ENGINE = InnoDB;
+
+
+4. add .env file and append environment variables that are used in index.js inside models/
+
+
+5. run "npm start"
